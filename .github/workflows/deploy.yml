@@ -1,0 +1,137 @@
+name: 🚀 Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:  # Allow manual deployment
+
+jobs:
+  deploy:
+    name: 🚀 Deploy Application
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🚀 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: 📦 Install dependencies
+      run: npm ci
+      
+    - name: 🧪 Run tests
+      run: npm test
+      
+    - name: 🏗️ Build application
+      run: npm run build
+      env:
+        NODE_ENV: production
+        
+    - name: 📦 Create deployment package
+      run: |
+        tar -czf deployment.tar.gz \
+          package.json \
+          package-lock.json \
+          server.js \
+          scheduler.js \
+          config/ \
+          db/ \
+          services/ \
+          dist/ \
+          --exclude=node_modules \
+          --exclude=coverage \
+          --exclude=tests
+          
+    - name: 📤 Upload deployment artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployment-package
+        path: deployment.tar.gz
+        retention-days: 30
+        
+    # Docker deployment option
+    - name: 🐳 Set up Docker Buildx
+      if: contains(github.event.head_commit.message, '[docker]')
+      uses: docker/setup-buildx-action@v3
+      
+    - name: 🔑 Login to DockerHub
+      if: contains(github.event.head_commit.message, '[docker]')
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        
+    - name: 🏗️ Build and push Docker image
+      if: contains(github.event.head_commit.message, '[docker]')
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: |
+          ${{ secrets.DOCKERHUB_USERNAME }}/intelligent-news-system:latest
+          ${{ secrets.DOCKERHUB_USERNAME }}/intelligent-news-system:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    # 部署通知
+    - name: 📱 Deployment notification
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "🎉 Deployment successful!"
+          echo "✅ Version: ${{ github.sha }}"
+          echo "🌍 Branch: ${{ github.ref_name }}"
+        else
+          echo "❌ Deployment failed!"
+        fi
+
+  release:
+    name: 📋 Create Release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: deploy
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 📋 Generate changelog
+      id: changelog
+      run: |
+        # 简单的changelog生成
+        echo "## 🚀 Release Notes" > CHANGELOG.md
+        echo "" >> CHANGELOG.md
+        echo "### ✨ 新功能" >> CHANGELOG.md
+        echo "- 智能新闻推荐系统" >> CHANGELOG.md
+        echo "- Vue 3移动端优化界面" >> CHANGELOG.md
+        echo "- 自动化RSS源管理" >> CHANGELOG.md
+        echo "" >> CHANGELOG.md
+        echo "### 🛠 技术改进" >> CHANGELOG.md
+        echo "- 完整的测试覆盖" >> CHANGELOG.md
+        echo "- CI/CD自动化部署" >> CHANGELOG.md
+        echo "- 性能优化和安全加固" >> CHANGELOG.md
+        
+    - name: 📤 Download deployment package
+      uses: actions/download-artifact@v4
+      with:
+        name: deployment-package
+        
+    - name: 🏷️ Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: deployment.tar.gz
+        body_path: CHANGELOG.md
+        generate_release_notes: true
+        prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

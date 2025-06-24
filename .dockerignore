@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+
+# Development files
+.git/
+.github/
+.env*
+*.md
+!README.md
+
+# Test files
+tests/
+coverage/
+.nyc_output/
+jest.config.js
+test-runner.js
+
+# Development tools
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+
+# Database files (will be mounted as volume)
+db/*.db
+db/*.sqlite
+db/*.sqlite3
+
+# Build cache
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+
+# IDE files
+*.sublime-*
+.vimrc
+
+# Docker
+Dockerfile*
+.dockerignore
+docker-compose*.yml
