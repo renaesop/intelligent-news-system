@@ -6,7 +6,6 @@
 
 ### 🚀 CI/CD 流水线
 [![CI/CD Pipeline](https://github.com/renaesop/intelligent-news-system/actions/workflows/ci.yml/badge.svg)](https://github.com/renaesop/intelligent-news-system/actions/workflows/ci.yml)
-[![Deploy](https://github.com/renaesop/intelligent-news-system/actions/workflows/deploy.yml/badge.svg)](https://github.com/renaesop/intelligent-news-system/actions/workflows/deploy.yml)
 [![CodeQL](https://github.com/renaesop/intelligent-news-system/actions/workflows/codeql.yml/badge.svg)](https://github.com/renaesop/intelligent-news-system/actions/workflows/codeql.yml)
 
 ### 📈 代码质量
@@ -172,22 +171,15 @@ node test-runner.js
 ## 🔄 CI/CD 自动化
 
 ### 🚀 持续集成流水线
-我们的CI/CD流水线确保代码质量和自动化部署：
+我们的CI流水线确保代码质量和安全：
 
 #### 📋 CI 工作流 (ci.yml)
 - **多版本测试**: Node.js 18.x & 20.x 矩阵测试
 - **自动化测试**: 单元测试 + 集成测试
-- **代码覆盖率**: 自动生成并上传到Codecov
+- **代码覆盖率**: 自动生成测试覆盖率报告
 - **构建验证**: Vue 3前端构建检查
 - **安全审计**: npm audit + 漏洞扫描
 - **性能分析**: 包大小分析
-
-#### 🚀 部署工作流 (deploy.yml)
-- **自动部署**: main分支推送触发
-- **版本发布**: Git标签自动创建GitHub Release
-- **Docker支持**: 多平台容器镜像构建
-- **部署包管理**: 自动打包和存储构建产物
-- **手动部署**: 支持workflow_dispatch手动触发
 
 #### 🔒 安全工作流
 - **CodeQL分析**: GitHub安全代码扫描
@@ -200,15 +192,12 @@ node test-runner.js
 | 🧪 测试覆盖率 | 95%+ | 全面的测试覆盖 |
 | 🔒 安全评级 | A | 无已知安全漏洞 |
 | 📦 构建状态 | ✅ 通过 | 自动化构建成功 |
-| 🚀 部署状态 | ✅ 在线 | 自动化部署就绪 |
 | 📈 代码质量 | A | 代码规范和质量 |
 
 ### 🔧 工作流触发条件
 - ✅ **Push**: main/develop分支推送
 - ✅ **Pull Request**: 对main分支的PR
-- ✅ **Release**: 版本标签推送 (v*.*.*)
 - ✅ **Schedule**: 每周安全扫描
-- ✅ **Manual**: 手动触发部署
 
 ## ⏰ 自动化任务
 
