@@ -128,7 +128,8 @@ app.get('/api/stats', async (req, res) => {
         if (err) reject(err);
         else {
           const userStats = await memoryService.getUserPreferenceStats(userId);
-          resolve({ ...row, userStats });
+          const vectorStats = await recommendationService.getVectorStats();
+          resolve({ ...row, userStats, vectorStats });
         }
       });
     });
@@ -137,6 +138,63 @@ app.get('/api/stats', async (req, res) => {
   } catch (error) {
     console.error('Error getting stats:', error);
     res.status(500).json({ error: 'Failed to get stats' });
+  }
+});
+
+// Vector search endpoints
+app.post('/api/articles/search', async (req, res) => {
+  try {
+    const { query, limit = 10 } = req.body;
+    
+    if (!query) {
+      return res.status(400).json({ error: 'Query is required' });
+    }
+    
+    const similarArticles = await recommendationService.findSimilarArticles(query, limit);
+    res.json({
+      query,
+      results: similarArticles,
+      count: similarArticles.length
+    });
+  } catch (error) {
+    console.error('Error searching articles:', error);
+    res.status(500).json({ error: 'Failed to search articles' });
+  }
+});
+
+app.post('/api/articles/:id/vectorize', async (req, res) => {
+  try {
+    const articleId = req.params.id;
+    
+    const article = await recommendationService.getArticleById(articleId);
+    if (!article) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+    
+    const success = await recommendationService.processArticleForVectors(article);
+    
+    if (success) {
+      res.json({ 
+        success: true, 
+        message: `Vectors generated for article ${articleId}`,
+        article_id: articleId
+      });
+    } else {
+      res.status(500).json({ error: 'Failed to generate vectors' });
+    }
+  } catch (error) {
+    console.error('Error vectorizing article:', error);
+    res.status(500).json({ error: 'Failed to vectorize article' });
+  }
+});
+
+app.get('/api/vectors/stats', async (req, res) => {
+  try {
+    const vectorStats = await recommendationService.getVectorStats();
+    res.json(vectorStats);
+  } catch (error) {
+    console.error('Error getting vector stats:', error);
+    res.status(500).json({ error: 'Failed to get vector stats' });
   }
 });
 

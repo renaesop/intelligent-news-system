@@ -1,6 +1,7 @@
 const db = require('../db/database');
 const llmService = require('./llmService');
 const memoryService = require('./memoryService');
+const vectorService = require('./vectorService');
 
 class RecommendationService {
   async scoreArticle(article, userId = 'default') {
@@ -77,26 +78,59 @@ class RecommendationService {
   async getRecommendedArticles(userId = 'default', limit = 20) {
     return new Promise(async (resolve, reject) => {
       try {
-        db.all(`
-          SELECT a.*, s.name as source_name
-          FROM articles a
-          JOIN rss_sources s ON a.source_id = s.id
-          WHERE a.id NOT IN (
-            SELECT article_id FROM user_preferences WHERE user_id = ?
-          )
-          ORDER BY a.created_at DESC
-          LIMIT 100
-        `, [userId], async (err, articles) => {
-          if (err) return reject(err);
+        // Try vector-based recommendations first
+        const vectorRecommendations = await vectorService.getPersonalizedRecommendations(userId, limit);
+        
+        if (vectorRecommendations.length > 0) {
+          console.log(`🎯 Using vector-based recommendations for user ${userId}`);
           
-          for (const article of articles) {
-            article.score = await this.scoreArticle(article, userId);
-          }
+          const articleIds = vectorRecommendations.map(r => r.article_id);
+          const placeholders = articleIds.map(() => '?').join(',');
           
-          articles.sort((a, b) => b.score - a.score);
+          db.all(`
+            SELECT a.*, s.name as source_name
+            FROM articles a
+            JOIN rss_sources s ON a.source_id = s.id
+            WHERE a.id IN (${placeholders})
+          `, articleIds, (err, articles) => {
+            if (err) return reject(err);
+            
+            // Sort articles by vector similarity score
+            const sortedArticles = articles.map(article => {
+              const vectorData = vectorRecommendations.find(r => r.article_id === article.id);
+              return {
+                ...article,
+                similarity_score: vectorData ? vectorData.similarity_score : 0
+              };
+            }).sort((a, b) => b.similarity_score - a.similarity_score);
+            
+            resolve(sortedArticles);
+          });
+        } else {
+          // Fallback to traditional scoring method
+          console.log(`📊 Using traditional scoring for user ${userId}`);
           
-          resolve(articles.slice(0, limit));
-        });
+          db.all(`
+            SELECT a.*, s.name as source_name
+            FROM articles a
+            JOIN rss_sources s ON a.source_id = s.id
+            WHERE a.id NOT IN (
+              SELECT article_id FROM user_preferences WHERE user_id = ?
+            )
+            ORDER BY a.created_at DESC
+            LIMIT 100
+          `, [userId], async (err, articles) => {
+            if (err) return reject(err);
+            
+            for (const article of articles) {
+              article.score = await this.scoreArticle(article, userId);
+            }
+            
+            articles.sort((a, b) => b.score - a.score);
+            
+            resolve(articles.slice(0, limit));
+          });
+        }
       } catch (error) {
         reject(error);
       }
@@ -122,6 +156,14 @@ class RecommendationService {
             await memoryService.updateUserInterests(userId, action, keywords);
             
             await memoryService.updateMemoryFromAction(userId, article, action);
+            
+            // Update user preference vector
+            try {
+              await vectorService.updateUserPreferenceVector(userId, keywords);
+              console.log(`🎯 Updated preference vector for user ${userId}`);
+            } catch (vectorError) {
+              console.error('Error updating preference vector:', vectorError);
+            }
             
             resolve({ success: true, keywords });
           }
@@ -165,6 +207,70 @@ class RecommendationService {
         else resolve(row);
       });
     });
+  }
+
+  async processArticleForVectors(article) {
+    try {
+      // Generate and store vectors for the article
+      await vectorService.storeArticleVectors(
+        article.id,
+        article.title,
+        article.description + ' ' + (article.content || '')
+      );
+      
+      console.log(`🎯 Generated vectors for article ${article.id}: ${article.title}`);
+      return true;
+    } catch (error) {
+      console.error(`Error processing article ${article.id} for vectors:`, error);
+      return false;
+    }
+  }
+
+  async findSimilarArticles(queryText, limit = 10) {
+    try {
+      const similarArticles = await vectorService.findSimilarArticles(queryText, limit);
+      
+      if (similarArticles.length === 0) {
+        return [];
+      }
+
+      const articleIds = similarArticles.map(s => s.article_id);
+      const placeholders = articleIds.map(() => '?').join(',');
+      
+      return new Promise((resolve, reject) => {
+        db.all(`
+          SELECT a.*, s.name as source_name
+          FROM articles a
+          JOIN rss_sources s ON a.source_id = s.id
+          WHERE a.id IN (${placeholders})
+        `, articleIds, (err, articles) => {
+          if (err) return reject(err);
+          
+          // Add similarity scores to articles
+          const enrichedArticles = articles.map(article => {
+            const similarityData = similarArticles.find(s => s.article_id === article.id);
+            return {
+              ...article,
+              similarity_score: similarityData ? similarityData.similarity || (1 - similarityData.distance) : 0
+            };
+          }).sort((a, b) => b.similarity_score - a.similarity_score);
+          
+          resolve(enrichedArticles);
+        });
+      });
+    } catch (error) {
+      console.error('Error finding similar articles:', error);
+      return [];
+    }
+  }
+
+  async getVectorStats() {
+    try {
+      return await vectorService.getVectorStats();
+    } catch (error) {
+      console.error('Error getting vector stats:', error);
+      return {};
+    }
   }
 }
 

@@ -1,5 +1,6 @@
 const Parser = require('rss-parser');
 const db = require('../db/database');
+const recommendationService = require('./recommendationService');
 
 const parser = new Parser({
   customFields: {
@@ -91,8 +92,10 @@ class RSSService {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
+    const savedArticles = [];
+
     articles.forEach(article => {
-      stmt.run(
+      const result = stmt.run(
         article.source_id,
         article.title,
         article.description,
@@ -102,9 +105,29 @@ class RSSService {
         article.author,
         article.categories
       );
+
+      // If this is a new article (not ignored due to duplicate)
+      if (result.changes > 0) {
+        savedArticles.push({
+          id: result.lastInsertRowid,
+          ...article
+        });
+      }
     });
 
     stmt.finalize();
+
+    // Generate vectors for new articles
+    console.log(`🎯 Processing ${savedArticles.length} new articles for vector generation`);
+    for (const article of savedArticles) {
+      try {
+        await recommendationService.processArticleForVectors(article);
+      } catch (error) {
+        console.error(`Error generating vectors for article ${article.id}:`, error);
+      }
+    }
+
+    return savedArticles.length;
   }
 
   async getActiveSources() {
