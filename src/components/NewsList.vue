@@ -24,6 +24,10 @@
           <span class="date">{{ formatDate(article.publishedAt) }}</span>
         </div>
 
+        <div v-if="article.explanation" class="recommendation-explanation">
+          <small>💡 {{ article.explanation }}</small>
+        </div>
+
         <div class="article-actions">
           <button 
             @click="giveFeedback(article.id, 'like')" 
@@ -71,8 +75,25 @@ export default {
 
     const loadRecommendations = async () => {
       try {
-        const response = await fetch('/api/articles/recommended')
-        articles.value = await response.json()
+        const response = await fetch('/api/articles/recommended?enableExplain=true')
+        const result = await response.json()
+        
+        // Handle new response format from recall-ranking service
+        if (result.data && Array.isArray(result.data)) {
+          articles.value = result.data.map(article => ({
+            id: article.id,
+            title: article.title,
+            description: article.description,
+            source: article.source_name || article.source,
+            publishedAt: article.pub_date || article.created_at,
+            link: article.url,
+            userFeedback: null,
+            explanation: article.explanation // Show recommendation explanation
+          }))
+        } else if (Array.isArray(result)) {
+          // Fallback for old format
+          articles.value = result
+        }
       } catch (error) {
         console.error('Error loading recommendations:', error)
       }
@@ -235,6 +256,19 @@ export default {
 
 .read-btn:hover {
   background: #0056b3;
+}
+
+.recommendation-explanation {
+  background: #f8f9fa;
+  padding: 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  border-left: 3px solid #007bff;
+}
+
+.recommendation-explanation small {
+  color: #6c757d;
+  font-style: italic;
 }
 
 /* Mobile optimizations */

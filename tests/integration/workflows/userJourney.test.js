@@ -1,7 +1,7 @@
 const request = require('supertest');
 
 // Mock the problematic services before requiring the app
-jest.mock('../services/memoryService', () => ({
+jest.mock('../../../services/memoryService', () => ({
   addMemory: jest.fn(),
   getMemories: jest.fn(),
   getUserPreferenceStats: jest.fn().mockResolvedValue({
@@ -11,7 +11,7 @@ jest.mock('../services/memoryService', () => ({
   })
 }));
 
-jest.mock('../services/llmService', () => ({
+jest.mock('../../../services/llmService', () => ({
   analyzeContent: jest.fn().mockResolvedValue({
     category: 'general',
     score: 0.5,

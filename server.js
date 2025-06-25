@@ -7,6 +7,7 @@ require('dotenv').config();
 const db = require('./db/database');
 const rssService = require('./services/rssParser');
 const recommendationService = require('./services/recommendationService');
+const recallRankingService = require('./services/recallRankingService');
 const memoryService = require('./services/memoryService');
 const defaultRssSources = require('./config/rssSources');
 
@@ -38,8 +39,14 @@ async function initializeApp() {
 app.get('/api/articles/recommended', async (req, res) => {
   try {
     const userId = req.query.userId || 'default';
-    const articles = await recommendationService.getRecommendedArticles(userId);
-    res.json(articles);
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 20;
+    const forceRefresh = req.query.forceRefresh === 'true';
+    const enableExplain = req.query.enableExplain === 'true';
+    
+    const options = { page, pageSize, forceRefresh, enableExplain };
+    const recommendations = await recallRankingService.getRecommendations(userId, options);
+    res.json(recommendations);
   } catch (error) {
     console.error('Error getting recommended articles:', error);
     res.status(500).json({ error: 'Failed to get recommendations' });
@@ -195,6 +202,17 @@ app.get('/api/vectors/stats', async (req, res) => {
   } catch (error) {
     console.error('Error getting vector stats:', error);
     res.status(500).json({ error: 'Failed to get vector stats' });
+  }
+});
+
+// 新推荐系统统计信息
+app.get('/api/recommendations/stats', async (req, res) => {
+  try {
+    const stats = await recallRankingService.getRecommendationStats();
+    res.json(stats);
+  } catch (error) {
+    console.error('Error getting recommendation stats:', error);
+    res.status(500).json({ error: 'Failed to get recommendation stats' });
   }
 });
 

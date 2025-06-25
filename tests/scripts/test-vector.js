@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-const vectorService = require('./services/vectorService');
-const recommendationService = require('./services/recommendationService');
+const vectorService = require('../../services/vectorService');
+const recommendationService = require('../../services/recommendationService');
 
 async function testVectorFunctionality() {
   console.log('🧪 Testing Vector Search Functionality\n');

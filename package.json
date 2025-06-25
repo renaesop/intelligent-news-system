@@ -11,7 +11,15 @@
     "preview": "vite preview",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:unit": "jest --testPathPattern=tests/unit --maxWorkers=50%",
+    "test:integration": "jest --testPathPattern=tests/integration --maxWorkers=50%",
+    "test:performance": "jest --testPathPattern=tests/performance --testTimeout=60000",
+    "test:scripts": "node tests/scripts/test-runner.js",
+    "test:recall": "node tests/scripts/test-recall-ranking.js",
+    "test:vector": "node tests/scripts/test-vector.js",
+    "test:all": "node tests/scripts/test-runner.js",
+    "test:ci": "jest --ci --coverage --watchAll=false --maxWorkers=2"
   },
   "keywords": [],
   "author": "",

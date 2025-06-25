@@ -15,32 +15,32 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // Mock database and services
-jest.mock('../db/database', () => ({
+jest.mock('../../../db/database', () => ({
   run: jest.fn(),
   get: jest.fn(),
   all: jest.fn()
 }));
 
-jest.mock('../services/rssParser', () => ({
+jest.mock('../../../services/rssParser', () => ({
   fetchAllFeeds: jest.fn(),
   saveArticles: jest.fn(),
   getActiveSources: jest.fn(),
   initializeSources: jest.fn()
 }));
 
-jest.mock('../services/recommendationService', () => ({
+jest.mock('../../../services/recommendationService', () => ({
   getRecommendedArticles: jest.fn(),
   processUserFeedback: jest.fn()
 }));
 
-jest.mock('../services/memoryService', () => ({
+jest.mock('../../../services/memoryService', () => ({
   getUserPreferenceStats: jest.fn()
 }));
 
-const db = require('../db/database');
-const rssService = require('../services/rssParser');
-const recommendationService = require('../services/recommendationService');
-const memoryService = require('../services/memoryService');
+const db = require('../../../db/database');
+const rssService = require('../../../services/rssParser');
+const recommendationService = require('../../../services/recommendationService');
+const memoryService = require('../../../services/memoryService');
 
 // Setup API routes
 app.get('/api/articles/recommended', async (req, res) => {

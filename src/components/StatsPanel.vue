@@ -53,6 +53,35 @@
       </div>
     </div>
 
+    <div v-if="stats.recommendationStats" class="recommendation-stats-section">
+      <h3>智能推荐统计</h3>
+      
+      <div class="rec-stats-grid">
+        <div class="stat-card">
+          <div class="stat-number">{{ stats.recommendationStats.cache_size || 0 }}</div>
+          <div class="stat-label">缓存条目</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-number">{{ stats.recommendationStats.cache_hit_rate || '0%' }}</div>
+          <div class="stat-label">缓存命中率</div>
+        </div>
+        
+        <div v-if="stats.recommendationStats.cache_details" class="cache-details">
+          <h4>缓存详情</h4>
+          <div class="detail-item">
+            <span>活跃条目: {{ stats.recommendationStats.cache_details.active_entries }}</span>
+          </div>
+          <div class="detail-item">
+            <span>过期条目: {{ stats.recommendationStats.cache_details.expired_entries }}</span>
+          </div>
+          <div class="detail-item">
+            <span>平均命中次数: {{ stats.recommendationStats.cache_details.avg_hit_count }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="actions-section">
       <button @click="refreshStats" :disabled="loading" class="refresh-btn">
         {{ loading ? '刷新中...' : '刷新统计' }}
@@ -82,8 +111,19 @@ export default {
     const loadStats = async () => {
       loading.value = true
       try {
-        const response = await fetch('/api/stats?userId=default')
-        stats.value = await response.json()
+        // Load both general stats and recommendation stats
+        const [generalResponse, recResponse] = await Promise.all([
+          fetch('/api/stats?userId=default'),
+          fetch('/api/recommendations/stats')
+        ])
+        
+        const generalStats = await generalResponse.json()
+        const recStats = await recResponse.json()
+        
+        stats.value = {
+          ...generalStats,
+          recommendationStats: recStats
+        }
       } catch (error) {
         console.error('Error loading stats:', error)
       } finally {
@@ -237,6 +277,47 @@ export default {
 .refresh-btn:disabled {
   background: #ccc;
   cursor: not-allowed;
+}
+
+.recommendation-stats-section {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.recommendation-stats-section h3 {
+  color: #333;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.rec-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.cache-details {
+  grid-column: 1 / -1;
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 3px solid #28a745;
+}
+
+.cache-details h4 {
+  color: #333;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+}
+
+.detail-item {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #555;
 }
 
 /* Mobile optimizations */
